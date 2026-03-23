@@ -192,6 +192,12 @@ textarea {
   margin-top: 0;
 }
 
+.results-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 button {
   border: none;
   border-radius: 999px;
@@ -249,6 +255,43 @@ button.small {
   border-radius: 999px;
   padding: 8px 14px;
   border: 1px solid var(--border);
+}
+
+.schedule {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+.schedule .item {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.schedule .meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.badge-inline.warn {
+  border-color: #d05a33;
+  color: #a03f22;
 }
 
 .order,

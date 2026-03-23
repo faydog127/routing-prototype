@@ -18,15 +18,21 @@ const propertyResultsEl = document.getElementById("propertyResults");
 const travelModeInput = document.getElementById("travelMode");
 const routingPreferenceInput = document.getElementById("routingPreference");
 const unitsInput = document.getElementById("units");
+const serviceTimeInput = document.getElementById("serviceTime");
+const departAtInput = document.getElementById("departAt");
+const windowStartInput = document.getElementById("windowStart");
+const windowEndInput = document.getElementById("windowEnd");
 const roundTripInput = document.getElementById("roundTrip");
 const avoidTollsInput = document.getElementById("avoidTolls");
 const avoidHighwaysInput = document.getElementById("avoidHighways");
 const avoidFerriesInput = document.getElementById("avoidFerries");
 const optimizeBtn = document.getElementById("optimizeBtn");
 const clearBtn = document.getElementById("clearBtn");
+const openMapsBtn = document.getElementById("openMapsBtn");
 const statusEl = document.getElementById("status");
 const summaryEl = document.getElementById("summary");
 const orderEl = document.getElementById("order");
+const scheduleEl = document.getElementById("schedule");
 const legsEl = document.getElementById("legs");
 const rawOutputEl = document.getElementById("rawOutput");
 
@@ -51,6 +57,11 @@ let markers = [];
 let zones = [];
 let properties = [];
 let filteredProperties = [];
+let mapsLinkUrl = "";
+
+if (openMapsBtn) {
+  openMapsBtn.disabled = true;
+}
 
 function loadRememberedKey() {
   if (APP_CONFIG.mapsApiKey) {
@@ -130,6 +141,53 @@ function parseDurationSeconds(duration) {
   return Number(match[1]);
 }
 
+function parseMinutesInput(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) return 0;
+  return Math.round(num);
+}
+
+function parseTimeValue(value) {
+  if (!value) return null;
+  const [hours, minutes] = value.split(":").map(Number);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function parseDateTimeLocal(value) {
+  if (!value) return null;
+  const [datePart, timePart] = value.split("T");
+  if (!datePart || !timePart) return null;
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hours, minutes] = timePart.split(":").map(Number);
+  if ([year, month, day, hours, minutes].some(Number.isNaN)) return null;
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
+}
+
+function formatTime(date) {
+  if (!date) return "—";
+  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDateTime(date) {
+  if (!date) return "—";
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function isWithinWindow(date, windowStartMinutes, windowEndMinutes) {
+  if (windowStartMinutes == null || windowEndMinutes == null || !date) return true;
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  if (windowStartMinutes <= windowEndMinutes) {
+    return minutes >= windowStartMinutes && minutes <= windowEndMinutes;
+  }
+  return minutes >= windowStartMinutes || minutes <= windowEndMinutes;
+}
+
 function formatDuration(duration) {
   const seconds = parseDurationSeconds(duration);
   if (seconds == null) return "—";
@@ -148,8 +206,13 @@ function formatLocalized(value, fallback) {
 function clearOutput() {
   summaryEl.innerHTML = "";
   orderEl.innerHTML = "";
+  scheduleEl.innerHTML = "";
   legsEl.innerHTML = "";
   rawOutputEl.textContent = "{}";
+  mapsLinkUrl = "";
+  if (openMapsBtn) {
+    openMapsBtn.disabled = true;
+  }
 }
 
 function normalizeSupabaseUrl(url) {
@@ -461,6 +524,100 @@ function renderRouteOnMap(route, sequence) {
   });
 }
 
+function buildMapsUrl(sequence, travelMode, avoids) {
+  if (!sequence.length) return "";
+  const origin = sequence[0];
+  const destination = sequence[sequence.length - 1];
+  const waypoints = sequence.slice(1, -1);
+  const params = new URLSearchParams();
+  params.set("api", "1");
+  params.set("origin", origin);
+  params.set("destination", destination);
+
+  if (waypoints.length) {
+    params.set("waypoints", waypoints.join("|"));
+  }
+
+  const modeMap = {
+    DRIVE: "driving",
+    TWO_WHEELER: "driving",
+    BICYCLE: "bicycling",
+    WALK: "walking",
+    TRANSIT: "transit",
+  };
+
+  params.set("travelmode", modeMap[travelMode] || "driving");
+
+  const avoidList = [];
+  if (avoids.avoidTolls) avoidList.push("tolls");
+  if (avoids.avoidHighways) avoidList.push("highways");
+  if (avoids.avoidFerries) avoidList.push("ferries");
+  if (avoidList.length) {
+    params.set("avoid", avoidList.join("|"));
+  }
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function renderSchedule({
+  sequence,
+  legs,
+  serviceMinutes,
+  departAt,
+  windowStartMinutes,
+  windowEndMinutes,
+}) {
+  scheduleEl.innerHTML = "";
+
+  if (!departAt) {
+    return;
+  }
+
+  let currentTime = new Date(departAt.getTime());
+  const items = [];
+  const stopCount = sequence.length - 2;
+
+  for (let i = 0; i < stopCount; i += 1) {
+    const leg = legs[i];
+    const legSeconds = parseDurationSeconds(leg?.duration) || 0;
+    currentTime = new Date(currentTime.getTime() + legSeconds * 1000);
+    const arrival = new Date(currentTime.getTime());
+    const hasWindow =
+      windowStartMinutes != null && windowEndMinutes != null;
+    const withinWindow = hasWindow
+      ? isWithinWindow(arrival, windowStartMinutes, windowEndMinutes)
+      : true;
+    const badgeClass = withinWindow ? "badge-inline" : "badge-inline warn";
+    const badgeText = withinWindow ? "Within window" : "Outside window";
+
+    const badgeHtml = hasWindow
+      ? ` · <span class="${badgeClass}">${badgeText}</span>`
+      : "";
+
+    items.push(
+      `<div class="item"><strong>Stop ${i + 1}</strong>: ${
+        sequence[i + 1]
+      }<div class="meta">ETA ${formatTime(arrival)}${badgeHtml}</div></div>`
+    );
+
+    currentTime = new Date(currentTime.getTime() + serviceMinutes * 60000);
+  }
+
+  const finalLeg = legs[legs.length - 1];
+  const finalLegSeconds = parseDurationSeconds(finalLeg?.duration) || 0;
+  const arriveDestination = new Date(
+    currentTime.getTime() + finalLegSeconds * 1000
+  );
+
+  items.push(
+    `<div class="item"><strong>Return</strong>: ${
+      sequence[sequence.length - 1]
+    }<div class="meta">ETA ${formatTime(arriveDestination)}</div></div>`
+  );
+
+  scheduleEl.innerHTML = items.join("");
+}
+
 async function optimizeRoute() {
   const mapApiKey = apiKeyInput.value.trim();
   const origin = originInput.value.trim();
@@ -491,6 +648,10 @@ async function optimizeRoute() {
   clearOutput();
 
   const travelMode = travelModeInput.value;
+  const serviceMinutes = parseMinutesInput(serviceTimeInput.value);
+  const departAt = parseDateTimeLocal(departAtInput.value);
+  const windowStartMinutes = parseTimeValue(windowStartInput.value);
+  const windowEndMinutes = parseTimeValue(windowEndInput.value);
   const proxyPayload = {
     origin,
     destination,
@@ -581,10 +742,29 @@ async function optimizeRoute() {
       formatDuration(route.duration)
     );
 
+    const routeSeconds = parseDurationSeconds(route.duration) || 0;
+    const serviceSeconds = serviceMinutes * 60 * stops.length;
+    const totalWorkSeconds = routeSeconds + serviceSeconds;
+    const finishAt = departAt
+      ? new Date(departAt.getTime() + totalWorkSeconds * 1000)
+      : null;
+
     summaryEl.innerHTML = `
       <span>Total distance: ${totalDistance}</span>
       <span>Total duration: ${totalDuration}</span>
       <span>Stops: ${stops.length}</span>
+      ${
+        serviceMinutes > 0
+          ? `<span>Service time: ${serviceMinutes * stops.length} min</span>`
+          : ""
+      }
+      ${
+        serviceMinutes > 0
+          ? `<span>Total work time: ${formatDuration(totalWorkSeconds)}</span>`
+          : ""
+      }
+      ${departAt ? `<span>Depart: ${formatDateTime(departAt)}</span>` : ""}
+      ${finishAt ? `<span>Finish: ${formatDateTime(finishAt)}</span>` : ""}
     `;
 
     const optimizedIndex =
@@ -593,6 +773,16 @@ async function optimizeRoute() {
 
     const orderedStops = optimizedIndex.map((idx) => stops[idx]);
     const sequence = [origin, ...orderedStops, destination];
+
+    const avoids = {
+      avoidTolls: avoidTollsInput.checked,
+      avoidHighways: avoidHighwaysInput.checked,
+      avoidFerries: avoidFerriesInput.checked,
+    };
+    mapsLinkUrl = buildMapsUrl(sequence, travelMode, avoids);
+    if (openMapsBtn) {
+      openMapsBtn.disabled = !mapsLinkUrl;
+    }
 
     orderEl.innerHTML = sequence
       .map((address, index) => {
@@ -622,11 +812,20 @@ async function optimizeRoute() {
           leg.localizedValues?.duration,
           formatDuration(leg.duration)
         );
-        return `<div class="item"><strong>Leg ${
-          index + 1
-        }</strong>: ${from} → ${to}<br/>${distance} • ${duration}</div>`;
-      })
+          return `<div class="item"><strong>Leg ${
+            index + 1
+          }</strong>: ${from} → ${to}<br/>${distance} • ${duration}</div>`;
+        })
       .join("");
+
+    renderSchedule({
+      sequence,
+      legs,
+      serviceMinutes,
+      departAt,
+      windowStartMinutes,
+      windowEndMinutes,
+    });
 
     try {
       await loadMapsScript(mapApiKey);
@@ -642,16 +841,26 @@ async function optimizeRoute() {
   }
 }
 
-  optimizeBtn.addEventListener("click", optimizeRoute);
-  clearBtn.addEventListener("click", () => {
-    originInput.value = "";
-    destinationInput.value = "";
-    stopsInput.value = "";
-    roundTripInput.checked = false;
-    clearOutput();
-    clearMap();
-    setStatus("Cleared.", "neutral");
-  });
+optimizeBtn.addEventListener("click", optimizeRoute);
+clearBtn.addEventListener("click", () => {
+  originInput.value = "";
+  destinationInput.value = "";
+  stopsInput.value = "";
+  serviceTimeInput.value = "";
+  departAtInput.value = "";
+  windowStartInput.value = "";
+  windowEndInput.value = "";
+  roundTripInput.checked = false;
+  clearOutput();
+  clearMap();
+  setStatus("Cleared.", "neutral");
+});
+
+openMapsBtn.addEventListener("click", () => {
+  if (mapsLinkUrl) {
+    window.open(mapsLinkUrl, "_blank", "noopener");
+  }
+});
 
 loadZonesBtn.addEventListener("click", loadSupabaseData);
 zoneSelect.addEventListener("change", filterPropertiesByZones);

@@ -131,6 +131,30 @@
             </div>
           </div>
 
+          <div class="row">
+            <div class="field">
+              <label for="serviceTime">Service time per stop (minutes)</label>
+              <input id="serviceTime" type="number" min="0" step="5" placeholder="30" />
+              <div class="hint">Adds service time to the schedule estimate.</div>
+            </div>
+            <div class="field">
+              <label for="departAt">Departure time (local)</label>
+              <input id="departAt" type="datetime-local" />
+              <div class="hint">Used for basic time-window checks.</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="windowStart">Time window start (optional)</label>
+              <input id="windowStart" type="time" />
+            </div>
+            <div class="field">
+              <label for="windowEnd">Time window end (optional)</label>
+              <input id="windowEnd" type="time" />
+            </div>
+          </div>
+
           <div class="row compact">
             <label class="checkbox">
               <input id="roundTrip" type="checkbox" />
@@ -159,10 +183,14 @@
 
       <section class="panel">
         <h2>Results</h2>
+        <div class="results-actions">
+          <button id="openMapsBtn" class="ghost">Open in Google Maps</button>
+        </div>
         <div id="map" class="map"></div>
         <div id="status" class="status">Ready.</div>
         <div id="summary" class="summary"></div>
         <div id="order" class="order"></div>
+        <div id="schedule" class="schedule"></div>
         <div id="legs" class="legs"></div>
         <details class="raw">
           <summary>Raw response</summary>

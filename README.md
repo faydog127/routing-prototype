@@ -1,8 +1,9 @@
 # Route Optimizer Prototype (Today)
 
 This is a tiny standalone prototype that optimizes stop order for a single driver,
-renders the route on a map, and can optionally call the Routes API through a backend
-proxy so the routing key is not exposed in the browser.
+renders the route on a map, supports basic scheduling (service time + time windows),
+and can optionally call the Routes API through a backend proxy so the routing key is
+not exposed in the browser.
 
 ## Setup
 
@@ -51,6 +52,7 @@ supabase secrets set GOOGLE_MAPS_API_KEY=YOUR_ROUTES_API_KEY
 
 - Waypoint optimization requires **Routes API** and is billed under the
   ComputeRoutes Advanced SKU.
+- Use the **Open in Google Maps** button to launch turn-by-turn navigation.
 
 ## Supabase Zones (Optional)
 
