@@ -1,5 +1,6 @@
 const apiKeyInput = document.getElementById("apiKey");
 const rememberKeyInput = document.getElementById("rememberKey");
+const mapsKeyField = document.getElementById("mapsKeyField");
 const originInput = document.getElementById("origin");
 const destinationInput = document.getElementById("destination");
 const stopsInput = document.getElementById("stops");
@@ -66,6 +67,7 @@ if (openMapsBtn) {
 function loadRememberedKey() {
   if (APP_CONFIG.mapsApiKey) {
     apiKeyInput.value = APP_CONFIG.mapsApiKey;
+    if (mapsKeyField) mapsKeyField.classList.add("hidden");
     apiKeyInput.disabled = true;
     rememberKeyInput.checked = false;
     rememberKeyInput.disabled = true;
@@ -378,7 +380,11 @@ async function loadSupabaseData() {
       });
       const payload = await response.json();
       if (!response.ok) {
-        throw new Error(payload.error || "Failed to load zones.");
+        let message = payload.error || `Failed to load zones (${response.status}).`;
+        if (response.status === 404) {
+          message += " Deploy zones-proxy?";
+        }
+        throw new Error(message);
       }
       zones = payload.zones || [];
       properties = payload.properties || [];

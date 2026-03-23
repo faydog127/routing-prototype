@@ -24,20 +24,23 @@
         </div>
       </header>
 
-      <section class="panel">
+      <div class="layout">
+      <section class="panel input-panel">
         <h2>Inputs</h2>
         <div class="grid">
-          <div class="field">
-            <label for="apiKey">Google Maps API key</label>
+          <div id="mapsKeyField" class="field">
+            <label for="apiKey">Maps JavaScript API key</label>
             <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off" />
             <div class="hint-row">
               <label class="checkbox">
                 <input id="rememberKey" type="checkbox" />
                 <span>Remember in this browser</span>
               </label>
-              <span class="hint">Use a restricted key for the Maps JavaScript API.</span>
+              <span class="hint">Restricted to `route.bhfos.com/*` only.</span>
             </div>
           </div>
+
+          <div class="section-title">Route</div>
 
           <div class="row">
             <div class="field">
@@ -56,6 +59,8 @@
           </div>
 
           <div class="divider"></div>
+
+          <div class="section-title">Zones & Properties</div>
 
           <div class="field">
             <label>Supabase data source (for zones/properties)</label>
@@ -131,6 +136,8 @@
             </div>
           </div>
 
+          <div class="section-title">Schedule</div>
+
           <div class="row">
             <div class="field">
               <label for="serviceTime">Service time per stop (minutes)</label>
@@ -175,17 +182,15 @@
           </div>
         </div>
 
-        <div class="actions">
+        <div class="actions primary">
           <button id="optimizeBtn">Optimize route</button>
+          <button id="openMapsBtn" class="ghost">Open in Google Maps</button>
           <button id="clearBtn" class="ghost">Clear</button>
         </div>
       </section>
 
-      <section class="panel">
+      <section class="panel results-panel">
         <h2>Results</h2>
-        <div class="results-actions">
-          <button id="openMapsBtn" class="ghost">Open in Google Maps</button>
-        </div>
         <div id="map" class="map"></div>
         <div id="status" class="status">Ready.</div>
         <div id="summary" class="summary"></div>
@@ -197,6 +202,7 @@
           <pre id="rawOutput">{}</pre>
         </details>
       </section>
+      </div>
     </main>
 
     <script src="./config.js"></script>

@@ -46,6 +46,13 @@ body {
   gap: 32px;
 }
 
+.layout {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  align-items: start;
+}
+
 .hero {
   display: flex;
   justify-content: space-between;
@@ -103,6 +110,16 @@ h1 {
 .grid {
   display: grid;
   gap: 16px;
+}
+
+.section-title {
+  grid-column: 1 / -1;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-2);
+  font-weight: 700;
+  margin-top: 6px;
 }
 
 .row {
@@ -192,10 +209,8 @@ textarea {
   margin-top: 0;
 }
 
-.results-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 12px;
+.actions.primary {
+  justify-content: space-between;
 }
 
 button {
@@ -212,6 +227,13 @@ button {
 
 button:hover {
   transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 button.ghost {
@@ -238,6 +260,10 @@ button.small {
   gap: 16px;
   font-size: 1rem;
   margin-bottom: 16px;
+}
+
+.results-panel .map {
+  height: 520px;
 }
 
 .map {
@@ -360,5 +386,13 @@ button.small {
 
   .badge {
     align-self: flex-start;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .actions.primary {
+    justify-content: flex-start;
   }
 }
