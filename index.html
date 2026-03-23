@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Route Optimizer Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-grid"></div>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Developer Prototype</p>
+          <h1>Route Optimizer</h1>
+          <p class="subhead">
+            Paste your addresses, optimize the order, and get a clean route summary
+            using the Google Maps Platform Routes API.
+          </p>
+        </div>
+        <div class="badge">
+          <span>Single driver</span>
+          <span>Waypoint optimization</span>
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>Inputs</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="apiKey">Google Maps API key</label>
+            <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off" />
+            <div class="hint-row">
+              <label class="checkbox">
+                <input id="rememberKey" type="checkbox" />
+                <span>Remember in this browser</span>
+              </label>
+              <span class="hint">Use a restricted key. This prototype calls the API from the browser.</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="origin">Origin</label>
+              <input id="origin" type="text" placeholder="123 Main St, City, ST" />
+            </div>
+            <div class="field">
+              <label for="destination">Destination</label>
+              <input id="destination" type="text" placeholder="456 Pine Ave, City, ST" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="stops">Stops (one per line)</label>
+            <textarea id="stops" rows="6" placeholder="Stop 1&#10;Stop 2&#10;Stop 3"></textarea>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="travelMode">Travel mode</label>
+              <select id="travelMode">
+                <option value="DRIVE" selected>Drive</option>
+                <option value="TWO_WHEELER">Two wheeler</option>
+                <option value="BICYCLE">Bicycle</option>
+                <option value="WALK">Walk</option>
+                <option value="TRANSIT">Transit</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="routingPreference">Routing preference</label>
+              <select id="routingPreference">
+                <option value="TRAFFIC_AWARE" selected>Traffic aware</option>
+                <option value="TRAFFIC_UNAWARE">Traffic unaware</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="units">Units</label>
+              <select id="units">
+                <option value="IMPERIAL" selected>Imperial</option>
+                <option value="METRIC">Metric</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row compact">
+            <label class="checkbox">
+              <input id="roundTrip" type="checkbox" />
+              <span>Round trip (destination = origin)</span>
+            </label>
+            <label class="checkbox">
+              <input id="avoidTolls" type="checkbox" />
+              <span>Avoid tolls</span>
+            </label>
+            <label class="checkbox">
+              <input id="avoidHighways" type="checkbox" />
+              <span>Avoid highways</span>
+            </label>
+            <label class="checkbox">
+              <input id="avoidFerries" type="checkbox" />
+              <span>Avoid ferries</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="optimizeBtn">Optimize route</button>
+          <button id="clearBtn" class="ghost">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Results</h2>
+        <div id="map" class="map"></div>
+        <div id="status" class="status">Ready.</div>
+        <div id="summary" class="summary"></div>
+        <div id="order" class="order"></div>
+        <div id="legs" class="legs"></div>
+        <details class="raw">
+          <summary>Raw response</summary>
+          <pre id="rawOutput">{}</pre>
+        </details>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
