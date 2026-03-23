@@ -116,6 +116,12 @@ h1 {
   align-items: center;
 }
 
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
 .field {
   display: grid;
   gap: 8px;
@@ -158,6 +164,11 @@ textarea {
   color: var(--muted);
 }
 
+.hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .checkbox {
   display: inline-flex;
   align-items: center;
@@ -171,6 +182,10 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.actions.inline {
+  margin-top: 0;
 }
 
 button {
@@ -194,6 +209,11 @@ button.ghost {
   color: var(--ink);
   border: 1px solid var(--border);
   box-shadow: none;
+}
+
+button.small {
+  padding: 8px 14px;
+  font-size: 0.85rem;
 }
 
 .status {
@@ -256,6 +276,34 @@ button.ghost {
   padding: 16px;
   border-radius: 12px;
   overflow: auto;
+}
+
+.results {
+  display: grid;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.result-item {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.result-title {
+  font-weight: 600;
+}
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 900px) {

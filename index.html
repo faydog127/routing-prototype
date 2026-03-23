@@ -55,6 +55,54 @@
             <textarea id="stops" rows="6" placeholder="Stop 1&#10;Stop 2&#10;Stop 3"></textarea>
           </div>
 
+          <div class="divider"></div>
+
+          <div class="field">
+            <label>Supabase data source (for zones/properties)</label>
+            <div class="row">
+              <input
+                id="supabaseUrl"
+                type="text"
+                placeholder="https://YOUR_PROJECT.supabase.co"
+              />
+              <input
+                id="supabaseKey"
+                type="password"
+                placeholder="Supabase anon key (public)"
+                autocomplete="off"
+              />
+            </div>
+            <div class="hint-row">
+              <label class="checkbox">
+                <input id="rememberSupabase" type="checkbox" />
+                <span>Remember in this browser</span>
+              </label>
+              <button id="loadZonesBtn" class="ghost small">Load zones</button>
+              <span id="supabaseStatus" class="hint">Not connected.</span>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="zoneSelect">Zones (multi-select)</label>
+              <select id="zoneSelect" multiple size="6"></select>
+              <div class="actions inline">
+                <button id="replaceStopsBtn" class="ghost small">Replace stops</button>
+                <button id="appendStopsBtn" class="ghost small">Append stops</button>
+              </div>
+              <div class="hint">Replace or append stops with properties from selected zones.</div>
+            </div>
+            <div class="field">
+              <label for="propertySearch">Property search</label>
+              <input
+                id="propertySearch"
+                type="text"
+                placeholder="Search by property name or address"
+              />
+              <div id="propertyResults" class="results"></div>
+            </div>
+          </div>
+
           <div class="row">
             <div class="field">
               <label for="travelMode">Travel mode</label>

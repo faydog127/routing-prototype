@@ -3,6 +3,16 @@ const rememberKeyInput = document.getElementById("rememberKey");
 const originInput = document.getElementById("origin");
 const destinationInput = document.getElementById("destination");
 const stopsInput = document.getElementById("stops");
+const supabaseUrlInput = document.getElementById("supabaseUrl");
+const supabaseKeyInput = document.getElementById("supabaseKey");
+const rememberSupabaseInput = document.getElementById("rememberSupabase");
+const loadZonesBtn = document.getElementById("loadZonesBtn");
+const supabaseStatusEl = document.getElementById("supabaseStatus");
+const zoneSelect = document.getElementById("zoneSelect");
+const replaceStopsBtn = document.getElementById("replaceStopsBtn");
+const appendStopsBtn = document.getElementById("appendStopsBtn");
+const propertySearchInput = document.getElementById("propertySearch");
+const propertyResultsEl = document.getElementById("propertyResults");
 const travelModeInput = document.getElementById("travelMode");
 const routingPreferenceInput = document.getElementById("routingPreference");
 const unitsInput = document.getElementById("units");
@@ -19,12 +29,17 @@ const legsEl = document.getElementById("legs");
 const rawOutputEl = document.getElementById("rawOutput");
 
 const STORAGE_KEY = "routing-prototype-api-key";
+const SUPABASE_URL_KEY = "routing-prototype-supabase-url";
+const SUPABASE_KEY_KEY = "routing-prototype-supabase-anon";
 const DEFAULT_CENTER = { lat: 28.5383, lng: -81.3792 };
 
 let mapsPromise;
 let map;
 let routePolyline;
 let markers = [];
+let zones = [];
+let properties = [];
+let filteredProperties = [];
 
 function loadRememberedKey() {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -34,9 +49,28 @@ function loadRememberedKey() {
   }
 }
 
+function loadRememberedSupabase() {
+  const storedUrl = localStorage.getItem(SUPABASE_URL_KEY);
+  const storedKey = localStorage.getItem(SUPABASE_KEY_KEY);
+  if (storedUrl) {
+    supabaseUrlInput.value = storedUrl;
+  }
+  if (storedKey) {
+    supabaseKeyInput.value = storedKey;
+  }
+  if (storedUrl && storedKey) {
+    rememberSupabaseInput.checked = true;
+  }
+}
+
 function setStatus(message, tone = "neutral") {
   statusEl.textContent = message;
   statusEl.dataset.tone = tone;
+}
+
+function setSupabaseStatus(message, tone = "neutral") {
+  supabaseStatusEl.textContent = message;
+  supabaseStatusEl.dataset.tone = tone;
 }
 
 function parseStops(text) {
@@ -84,6 +118,200 @@ function clearOutput() {
   orderEl.innerHTML = "";
   legsEl.innerHTML = "";
   rawOutputEl.textContent = "{}";
+}
+
+function normalizeSupabaseUrl(url) {
+  return url.replace(/\/+$/, "");
+}
+
+async function fetchSupabaseJson(path, supabaseUrl, supabaseKey) {
+  const baseUrl = normalizeSupabaseUrl(supabaseUrl);
+  const response = await fetch(`${baseUrl}/rest/v1/${path}`, {
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+    },
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Supabase request failed (${response.status}).`);
+  }
+  return response.json();
+}
+
+function populateZones() {
+  zoneSelect.innerHTML = "";
+  zones.forEach((zone) => {
+    const option = document.createElement("option");
+    option.value = zone.id;
+    option.textContent = zone.zone_name;
+    zoneSelect.appendChild(option);
+  });
+}
+
+function getSelectedZoneIds() {
+  return Array.from(zoneSelect.selectedOptions)
+    .map((option) => Number(option.value))
+    .filter((value) => !Number.isNaN(value));
+}
+
+function propertyToAddress(property) {
+  const line1 = property.address_line_1 || "";
+  const city = property.city || "";
+  const state = property.state || "";
+  const zip = property.zip || "";
+  const cityState = [city, state].filter(Boolean).join(", ");
+  const tail = cityState ? `${cityState}${zip ? ` ${zip}` : ""}` : zip;
+  return [line1, tail].filter(Boolean).join(", ");
+}
+
+function filterPropertiesByZones() {
+  const selectedZoneIds = getSelectedZoneIds();
+  if (selectedZoneIds.length === 0) {
+    filteredProperties = properties.slice();
+  } else {
+    filteredProperties = properties.filter((property) =>
+      selectedZoneIds.includes(property.zone_id)
+    );
+  }
+  renderPropertyResults(propertySearchInput.value.trim());
+}
+
+function replaceStopsWithAddresses(addresses) {
+  if (!addresses.length) {
+    setSupabaseStatus("No properties found for the selected zones.", "error");
+    return;
+  }
+  stopsInput.value = addresses.join("\n");
+}
+
+function appendStopsWithAddresses(addresses) {
+  if (!addresses.length) {
+    setSupabaseStatus("No properties found for the selected zones.", "error");
+    return;
+  }
+  const existing = parseStops(stopsInput.value);
+  const existingSet = new Set(existing.map((addr) => addr.toLowerCase()));
+  addresses.forEach((address) => {
+    const key = address.toLowerCase();
+    if (!existingSet.has(key)) {
+      existing.push(address);
+      existingSet.add(key);
+    }
+  });
+  stopsInput.value = existing.join("\n");
+}
+
+function getZoneAddresses() {
+  const selectedZoneIds = getSelectedZoneIds();
+  if (selectedZoneIds.length === 0) return [];
+  return properties
+    .filter((property) => selectedZoneIds.includes(property.zone_id))
+    .map(propertyToAddress)
+    .filter(Boolean);
+}
+
+function renderPropertyResults(searchTerm) {
+  propertyResultsEl.innerHTML = "";
+  if (!properties.length) {
+    propertyResultsEl.innerHTML =
+      '<div class="hint">Load zones to enable search.</div>';
+    return;
+  }
+
+  const term = searchTerm.toLowerCase();
+  let results = filteredProperties;
+  if (term) {
+    results = filteredProperties.filter((property) => {
+      const name = property.property_name?.toLowerCase() || "";
+      const address = propertyToAddress(property).toLowerCase();
+      return name.includes(term) || address.includes(term);
+    });
+  }
+
+  results.slice(0, 10).forEach((property) => {
+    const address = propertyToAddress(property);
+    const item = document.createElement("div");
+    item.className = "result-item";
+
+    const title = document.createElement("div");
+    title.className = "result-title";
+    title.textContent = property.property_name || "Unnamed property";
+
+    const addressEl = document.createElement("div");
+    addressEl.textContent = address || "No address on file";
+
+    const actions = document.createElement("div");
+    actions.className = "result-actions";
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "ghost small";
+    addBtn.textContent = "Add to stops";
+    addBtn.addEventListener("click", () => {
+      if (address) appendStopsWithAddresses([address]);
+    });
+
+    const onlyBtn = document.createElement("button");
+    onlyBtn.className = "ghost small";
+    onlyBtn.textContent = "Use only this stop";
+    onlyBtn.addEventListener("click", () => {
+      if (address) replaceStopsWithAddresses([address]);
+    });
+
+    actions.appendChild(addBtn);
+    actions.appendChild(onlyBtn);
+
+    item.appendChild(title);
+    item.appendChild(addressEl);
+    item.appendChild(actions);
+    propertyResultsEl.appendChild(item);
+  });
+
+  if (results.length === 0) {
+    propertyResultsEl.innerHTML =
+      '<div class="hint">No matching properties found.</div>';
+  }
+}
+
+async function loadSupabaseData() {
+  const supabaseUrl = supabaseUrlInput.value.trim();
+  const supabaseKey = supabaseKeyInput.value.trim();
+
+  if (!supabaseUrl || !supabaseKey) {
+    setSupabaseStatus("Enter the Supabase URL and anon key.", "error");
+    return;
+  }
+
+  if (rememberSupabaseInput.checked) {
+    localStorage.setItem(SUPABASE_URL_KEY, supabaseUrl);
+    localStorage.setItem(SUPABASE_KEY_KEY, supabaseKey);
+  } else {
+    localStorage.removeItem(SUPABASE_URL_KEY);
+    localStorage.removeItem(SUPABASE_KEY_KEY);
+  }
+
+  setSupabaseStatus("Loading zones and properties...", "working");
+
+  try {
+    zones = await fetchSupabaseJson(
+      "zones?select=id,zone_name&order=zone_name.asc",
+      supabaseUrl,
+      supabaseKey
+    );
+    properties = await fetchSupabaseJson(
+      "properties?select=property_name,address_line_1,city,state,zip,zone_id&is_active=eq.true&order=property_name.asc",
+      supabaseUrl,
+      supabaseKey
+    );
+    populateZones();
+    filterPropertiesByZones();
+    setSupabaseStatus(
+      `Loaded ${zones.length} zones and ${properties.length} properties.`,
+      "success"
+    );
+  } catch (error) {
+    setSupabaseStatus(error.message, "error");
+  }
 }
 
 function loadMapsScript(apiKey) {
@@ -343,15 +571,28 @@ async function optimizeRoute() {
   }
 }
 
-optimizeBtn.addEventListener("click", optimizeRoute);
-clearBtn.addEventListener("click", () => {
-  originInput.value = "";
-  destinationInput.value = "";
-  stopsInput.value = "";
-  roundTripInput.checked = false;
-  clearOutput();
-  clearMap();
-  setStatus("Cleared.", "neutral");
-});
+  optimizeBtn.addEventListener("click", optimizeRoute);
+  clearBtn.addEventListener("click", () => {
+    originInput.value = "";
+    destinationInput.value = "";
+    stopsInput.value = "";
+    roundTripInput.checked = false;
+    clearOutput();
+    clearMap();
+    setStatus("Cleared.", "neutral");
+  });
+
+loadZonesBtn.addEventListener("click", loadSupabaseData);
+zoneSelect.addEventListener("change", filterPropertiesByZones);
+propertySearchInput.addEventListener("input", () =>
+  renderPropertyResults(propertySearchInput.value.trim())
+);
+replaceStopsBtn.addEventListener("click", () =>
+  replaceStopsWithAddresses(getZoneAddresses())
+);
+appendStopsBtn.addEventListener("click", () =>
+  appendStopsWithAddresses(getZoneAddresses())
+);
 
 loadRememberedKey();
+loadRememberedSupabase();

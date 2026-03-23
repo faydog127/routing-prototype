@@ -31,3 +31,13 @@ http://localhost:8080
   to keep the key private.
 - Waypoint optimization requires **Routes API** and is billed under the
   ComputeRoutes Advanced SKU.
+
+## Supabase Zones (Optional)
+
+If you want zone and property selection:
+
+1. Use the **Supabase URL** and **anon key** (public key) from your project.
+2. Click **Load zones** in the UI.
+3. Select one or more zones and use **Replace stops** or **Append stops**.
+
+This assumes `zones` and `properties` tables are readable with your anon key.
