@@ -169,6 +169,10 @@ textarea {
   color: var(--muted);
 }
 
+.hidden {
+  display: none;
+}
+
 .checkbox {
   display: inline-flex;
   align-items: center;

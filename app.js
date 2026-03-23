@@ -8,6 +8,8 @@ const supabaseKeyInput = document.getElementById("supabaseKey");
 const rememberSupabaseInput = document.getElementById("rememberSupabase");
 const loadZonesBtn = document.getElementById("loadZonesBtn");
 const supabaseStatusEl = document.getElementById("supabaseStatus");
+const supabaseCredentialsEl = document.getElementById("supabaseCredentials");
+const backendNoteEl = document.getElementById("backendNote");
 const zoneSelect = document.getElementById("zoneSelect");
 const replaceStopsBtn = document.getElementById("replaceStopsBtn");
 const appendStopsBtn = document.getElementById("appendStopsBtn");
@@ -28,6 +30,15 @@ const orderEl = document.getElementById("order");
 const legsEl = document.getElementById("legs");
 const rawOutputEl = document.getElementById("rawOutput");
 
+const CONFIG = window.__ROUTE_CONFIG__ || {};
+const APP_CONFIG = {
+  routesProxyUrl: CONFIG.routesProxyUrl || "",
+  zonesProxyUrl: CONFIG.zonesProxyUrl || "",
+  mapsApiKey: CONFIG.mapsApiKey || "",
+  supabaseUrl: CONFIG.supabaseUrl || "",
+  autoLoadZones: CONFIG.autoLoadZones !== false,
+};
+
 const STORAGE_KEY = "routing-prototype-api-key";
 const SUPABASE_URL_KEY = "routing-prototype-supabase-url";
 const SUPABASE_KEY_KEY = "routing-prototype-supabase-anon";
@@ -42,6 +53,14 @@ let properties = [];
 let filteredProperties = [];
 
 function loadRememberedKey() {
+  if (APP_CONFIG.mapsApiKey) {
+    apiKeyInput.value = APP_CONFIG.mapsApiKey;
+    apiKeyInput.disabled = true;
+    rememberKeyInput.checked = false;
+    rememberKeyInput.disabled = true;
+    return;
+  }
+
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
     apiKeyInput.value = stored;
@@ -50,6 +69,15 @@ function loadRememberedKey() {
 }
 
 function loadRememberedSupabase() {
+  if (APP_CONFIG.zonesProxyUrl) {
+    if (supabaseCredentialsEl) supabaseCredentialsEl.classList.add("hidden");
+    if (backendNoteEl) backendNoteEl.classList.remove("hidden");
+    rememberSupabaseInput.checked = false;
+    rememberSupabaseInput.disabled = true;
+    setSupabaseStatus("Backend proxy ready. Click Load zones.", "neutral");
+    return;
+  }
+
   const storedUrl = localStorage.getItem(SUPABASE_URL_KEY);
   const storedKey = localStorage.getItem(SUPABASE_KEY_KEY);
   if (storedUrl) {
@@ -60,6 +88,10 @@ function loadRememberedSupabase() {
   }
   if (storedUrl && storedKey) {
     rememberSupabaseInput.checked = true;
+  }
+
+  if (!storedUrl && APP_CONFIG.supabaseUrl) {
+    supabaseUrlInput.value = APP_CONFIG.supabaseUrl;
   }
 }
 
@@ -274,35 +306,47 @@ function renderPropertyResults(searchTerm) {
 }
 
 async function loadSupabaseData() {
-  const supabaseUrl = supabaseUrlInput.value.trim();
-  const supabaseKey = supabaseKeyInput.value.trim();
-
-  if (!supabaseUrl || !supabaseKey) {
-    setSupabaseStatus("Enter the Supabase URL and anon key.", "error");
-    return;
-  }
-
-  if (rememberSupabaseInput.checked) {
-    localStorage.setItem(SUPABASE_URL_KEY, supabaseUrl);
-    localStorage.setItem(SUPABASE_KEY_KEY, supabaseKey);
-  } else {
-    localStorage.removeItem(SUPABASE_URL_KEY);
-    localStorage.removeItem(SUPABASE_KEY_KEY);
-  }
-
   setSupabaseStatus("Loading zones and properties...", "working");
 
   try {
-    zones = await fetchSupabaseJson(
-      "zones?select=id,zone_name&order=zone_name.asc",
-      supabaseUrl,
-      supabaseKey
-    );
-    properties = await fetchSupabaseJson(
-      "properties?select=property_name,address_line_1,city,state,zip,zone_id&is_active=eq.true&order=property_name.asc",
-      supabaseUrl,
-      supabaseKey
-    );
+    if (APP_CONFIG.zonesProxyUrl) {
+      const response = await fetch(APP_CONFIG.zonesProxyUrl, {
+        method: "GET",
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to load zones.");
+      }
+      zones = payload.zones || [];
+      properties = payload.properties || [];
+    } else {
+      const supabaseUrl = supabaseUrlInput.value.trim();
+      const supabaseKey = supabaseKeyInput.value.trim();
+
+      if (!supabaseUrl || !supabaseKey) {
+        setSupabaseStatus("Enter the Supabase URL and anon key.", "error");
+        return;
+      }
+
+      if (rememberSupabaseInput.checked) {
+        localStorage.setItem(SUPABASE_URL_KEY, supabaseUrl);
+        localStorage.setItem(SUPABASE_KEY_KEY, supabaseKey);
+      } else {
+        localStorage.removeItem(SUPABASE_URL_KEY);
+        localStorage.removeItem(SUPABASE_KEY_KEY);
+      }
+
+      zones = await fetchSupabaseJson(
+        "zones?select=id,zone_name&order=zone_name.asc",
+        supabaseUrl,
+        supabaseKey
+      );
+      properties = await fetchSupabaseJson(
+        "properties?select=property_name,address_line_1,city,state,zip,zone_id&is_active=eq.true&order=property_name.asc",
+        supabaseUrl,
+        supabaseKey
+      );
+    }
     populateZones();
     filterPropertiesByZones();
     setSupabaseStatus(
@@ -418,72 +462,99 @@ function renderRouteOnMap(route, sequence) {
 }
 
 async function optimizeRoute() {
-  const apiKey = apiKeyInput.value.trim();
+  const mapApiKey = apiKeyInput.value.trim();
   const origin = originInput.value.trim();
   const isRoundTrip = roundTripInput.checked;
   const destinationInputValue = destinationInput.value.trim();
   const destination = isRoundTrip ? origin : destinationInputValue;
   const stops = parseStops(stopsInput.value);
 
-  if (!apiKey) {
-    setStatus("Add your Google Maps API key to continue.", "error");
-    return;
-  }
   if (!origin || !destination) {
     setStatus("Origin and destination are required.", "error");
     return;
   }
 
-  if (rememberKeyInput.checked) {
-    localStorage.setItem(STORAGE_KEY, apiKey);
-  } else {
-    localStorage.removeItem(STORAGE_KEY);
+  if (!mapApiKey) {
+    setStatus("Add your Google Maps JS API key to display the map.", "error");
+    return;
   }
 
-  setStatus("Calling Routes API…", "working");
+  if (!APP_CONFIG.mapsApiKey) {
+    if (rememberKeyInput.checked) {
+      localStorage.setItem(STORAGE_KEY, mapApiKey);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }
+
+  setStatus("Calling routing service…", "working");
   clearOutput();
 
-  const requestBody = {
-    origin: { address: origin },
-    destination: { address: destination },
-    intermediates: stops.map((address) => ({ address })),
-    travelMode: travelModeInput.value,
+  const travelMode = travelModeInput.value;
+  const proxyPayload = {
+    origin,
+    destination,
+    stops,
+    travelMode,
     routingPreference: routingPreferenceInput.value,
     optimizeWaypointOrder: stops.length > 1,
     units: unitsInput.value,
-    routeModifiers: {
-      avoidTolls: avoidTollsInput.checked,
-      avoidHighways: avoidHighwaysInput.checked,
-      avoidFerries: avoidFerriesInput.checked,
-    },
+    avoidTolls: avoidTollsInput.checked,
+    avoidHighways: avoidHighwaysInput.checked,
+    avoidFerries: avoidFerriesInput.checked,
   };
 
-  const fieldMask = [
-    "routes.distanceMeters",
-    "routes.duration",
-    "routes.localizedValues",
-    "routes.optimizedIntermediateWaypointIndex",
-    "routes.polyline.encodedPolyline",
-    "routes.legs.distanceMeters",
-    "routes.legs.duration",
-    "routes.legs.localizedValues",
-    "routes.legs.startLocation",
-    "routes.legs.endLocation",
-  ].join(",");
-
   try {
-    const response = await fetch(
-      "https://routes.googleapis.com/directions/v2:computeRoutes",
-      {
+    let response;
+
+    if (APP_CONFIG.routesProxyUrl) {
+      response = await fetch(APP_CONFIG.routesProxyUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": fieldMask,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(proxyPayload),
+      });
+    } else {
+      const requestBody = {
+        origin: { address: origin },
+        destination: { address: destination },
+        intermediates: stops.map((address) => ({ address })),
+        travelMode,
+        routingPreference: routingPreferenceInput.value,
+        optimizeWaypointOrder: stops.length > 1,
+        units: unitsInput.value,
+        routeModifiers: {
+          avoidTolls: avoidTollsInput.checked,
+          avoidHighways: avoidHighwaysInput.checked,
+          avoidFerries: avoidFerriesInput.checked,
         },
-        body: JSON.stringify(requestBody),
-      }
-    );
+      };
+
+      const fieldMask = [
+        "routes.distanceMeters",
+        "routes.duration",
+        "routes.localizedValues",
+        "routes.optimizedIntermediateWaypointIndex",
+        "routes.polyline.encodedPolyline",
+        "routes.legs.distanceMeters",
+        "routes.legs.duration",
+        "routes.legs.localizedValues",
+        "routes.legs.startLocation",
+        "routes.legs.endLocation",
+      ].join(",");
+
+      response = await fetch(
+        "https://routes.googleapis.com/directions/v2:computeRoutes",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": mapApiKey,
+            "X-Goog-FieldMask": fieldMask,
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+    }
 
     const payload = await response.json();
     rawOutputEl.textContent = JSON.stringify(payload, null, 2);
@@ -558,7 +629,7 @@ async function optimizeRoute() {
       .join("");
 
     try {
-      await loadMapsScript(apiKey);
+      await loadMapsScript(mapApiKey);
       renderRouteOnMap(route, sequence);
     } catch (mapError) {
       setStatus(`${mapError.message} Route details are still available.`, "error");
@@ -596,3 +667,6 @@ appendStopsBtn.addEventListener("click", () =>
 
 loadRememberedKey();
 loadRememberedSupabase();
+if (APP_CONFIG.autoLoadZones && APP_CONFIG.zonesProxyUrl) {
+  loadSupabaseData();
+}

@@ -35,7 +35,7 @@
                 <input id="rememberKey" type="checkbox" />
                 <span>Remember in this browser</span>
               </label>
-              <span class="hint">Use a restricted key. This prototype calls the API from the browser.</span>
+              <span class="hint">Use a restricted key for the Maps JavaScript API.</span>
             </div>
           </div>
 
@@ -59,7 +59,7 @@
 
           <div class="field">
             <label>Supabase data source (for zones/properties)</label>
-            <div class="row">
+            <div id="supabaseCredentials" class="row">
               <input
                 id="supabaseUrl"
                 type="text"
@@ -79,6 +79,7 @@
               </label>
               <button id="loadZonesBtn" class="ghost small">Load zones</button>
               <span id="supabaseStatus" class="hint">Not connected.</span>
+              <span id="backendNote" class="hint hidden">Using backend proxy.</span>
             </div>
           </div>
 
@@ -170,6 +171,7 @@
       </section>
     </main>
 
+    <script src="./config.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
