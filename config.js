@@ -4,6 +4,6 @@ window.__ROUTE_CONFIG__ = {
   zonesProxyUrl:
     "https://wwyxohjnyqnegzbxtuxs.supabase.co/functions/v1/zones-proxy",
   supabaseUrl: "https://wwyxohjnyqnegzbxtuxs.supabase.co",
-  mapsApiKey: "",
+  mapsApiKey: "AIzaSyBBDjO8nHoj4euneSzMChesBoSnAV2RadA",
   autoLoadZones: true,
 };
